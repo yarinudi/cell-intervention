@@ -168,7 +168,7 @@ def cross_valid_eval(feats, labels, train_args, model_args, train_transforms=Non
     return cv_results
 
 
-def get_metrics_per_target(label):
+def get_metrics_per_target(report_tot, label):
     precision_list = np.array([rep[label][-1]['precision'] for rep in report_tot])
     recall_list = np.array([rep[label][-1]['recall'] for rep in report_tot]) 
     f1_list = np.array([rep[label][-1]['f1-score'] for rep in report_tot]) 
@@ -181,7 +181,7 @@ def get_metrics_per_target(label):
 
 
 def cv_performance(cv_results):
-    """Calculates 10 fold metrics. """
+    """ Calculates 10 fold metrics. """
 
     report_tot = [[item[-3:] for item in rep.items()] for rep in cv_results['classification_report']]
     accuracy_list = np.array([rep[-3][-1] for rep in report_tot])
@@ -192,9 +192,9 @@ def cv_performance(cv_results):
     print(f"Total Mean Accuracy: {mean_accuracy} +/- {std_accuracy} \n Total Mean Weighted F1-Score {mean_weighted_f1_score} +/- {std_f1_score}")
 
     cv_performance = {
-        'Other' : get_metrics_per_target(0),
-        'GB' : get_metrics_per_target(1),
-        'GBT' : get_metrics_per_target(2)
+        'Other' : get_metrics_per_target(report_tot, 0),
+        'GB' : get_metrics_per_target(report_tot, 1),
+        'GBT' : get_metrics_per_target(report_tot, 2)
     }
 
     return cv_performance

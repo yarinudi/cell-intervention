@@ -4,18 +4,14 @@
 import sys
 import os
 import torch
-import torch.nn as nn
 import numpy as np
-
-import matplotlib.pyplot as plt
-from tqdm import tqdm 
 
 from data_handler import data_wrapper, train_test_split, load_extracted_features, process_feats
 from dataset import  get_transforms, get_datasets, get_dataloaders
 from train_seq_vit import evaluate_transformer, cross_valid_eval, cv_performance
 from utils import seed_everything, get_cls_tokens
 from seq_vit_utils import get_model_args, get_train_args, init_seq_vit
-from intervention import get_cell_online_eval, plot_online_pred, test_cell, intervene_frame
+from intervention import get_cell_online_eval, plot_online_pred, intervene_frame
 
 
 # %%
@@ -38,12 +34,11 @@ if __name__ == "__main__":
     """ Process data: concatination, tokenization, padding. """
     
     SOS_token, EOS_token, pad_token = get_cls_tokens(num_feats=tot_feats[0].shape[1])
-
     tot_feats = process_feats(tot_feats, SOS_token, EOS_token, pad_token)
     
-    image_size = tot_feats[0].shape[1:]
+    image_size, max_len = tot_feats[0].shape[1:], tot_feats[0].shape[1]
 
-    train_args = get_train_args()
+    train_args, model_args = get_train_args(), get_model_args(image_size, max_len, pad_token)
 
     # %% 
     """Split data to train and test. """
@@ -53,21 +48,22 @@ if __name__ == "__main__":
     
     # %%
     """ Evaluate a single model. """
-    max_len = tot_feats[0].shape[1]
-
-    model_args = get_model_args(image_size, max_len, pad_token)
     model = init_seq_vit(model_args)
     model, report = evaluate_transformer(model, train_loader, test_loader, train_args, model_args)
 
     # %%
     """10-folds cross-validation evaluation. """
-    # cv_results = cross_valid_eval(n_folds=10)
-    # cv_performance = cv_performance(cv_results)
+    cv_results = cross_valid_eval(tot_feats, tot_labels, train_args, model_args, train_transforms=None, test_transforms=None, n_folds=10)
+
+    # %%
+    """10-folds cross-validation performance. """
+    cv_perf = cv_performance(cv_results)
 
     # %%
     """Local interpertability - specific cell predictions over time. """
     labels, preds, cell_idx =get_cell_online_eval(model, tot_feats, tot_labels, train_args, 
                                             model_args, test_transforms, max_len, cell_idx=None)
+
     plot_online_pred(labels, preds, np.array([*range(len(preds))]), cell_idx)
 
     # %%
