@@ -136,6 +136,8 @@ class SeqViT(nn.Module):
             nn.Linear(dim, num_classes)
         )
 
+        self.soft_max = nn.Softmax(dim=1)
+
         self.to_bits = nn.Linear(dim, 2**(output_channel_bits * channels))
         self.loss = MPPLoss(patch_size, channels, output_channel_bits, max_pixel_val, mean, std)
 
@@ -158,7 +160,9 @@ class SeqViT(nn.Module):
         # mean shape = (batch size, transformer dim)
 
         x = self.to_latent(x)
-        out = self.linear_head(x)
+        x = self.linear_head(x)
+        
+        out = self.soft_max(x)
         # mean shape = (batch size, output dim)
 
         # regression logits for reg loss

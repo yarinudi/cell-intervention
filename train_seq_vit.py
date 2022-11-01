@@ -44,7 +44,6 @@ def evaluate_transformer(model, train_loader, val_loader, train_args, model_args
 
             data, label, orig_img, mask = data.to(model_args['device']), label.to(model_args['device']), orig_img.to(model_args['device']), mask.to(model_args['device'])
             output, mpp_loss = model(data, orig_img, mask)
-            # loss = criterion(output, label) if not mae else mae(data)
             loss = alpha*mpp_loss + criterion(output, label)
 
             if epoch != 0:
@@ -130,6 +129,36 @@ def test(model, test_loader, model_args, load_from_dir=False):
 
             pred, _ = model(data, orig_img, mask)
             pred = pred.argmax(dim=1)
+
+            labels.append(label.detach().cpu().numpy())
+            preds.append(pred.detach().cpu().numpy())
+
+            torch.cuda.empty_cache()
+
+    labels = [label for curr_labels in labels for label in curr_labels] 
+    preds = [pred for curr_preds in preds for pred in curr_preds] 
+    
+    return np.array(labels), np.array(preds)
+
+
+def predict_proba(model, test_loader, model_args, load_from_dir=False):
+    labels, preds = [], []
+
+    if load_from_dir:
+        model_path = os.path.join(os.getcwd(), 'resources', 'model', 'best_model.pth')
+        model = init_seq_vit(model_args)
+        model.load_state_dict(torch.load(model_path))
+    
+    model.eval()
+    with torch.no_grad():
+        for data, label in test_loader:
+            mpp_trainer = init_mpp(model, data, model_args)
+            data, orig_img, mask = mpp_trainer.mask_input(data)
+
+            data, label, orig_img, mask = data.to(model_args['device']), label.to(model_args['device']), \
+                                    orig_img.to(model_args['device']), mask.to(model_args['device'])
+
+            pred, _ = model(data, orig_img, mask)
 
             labels.append(label.detach().cpu().numpy())
             preds.append(pred.detach().cpu().numpy())
