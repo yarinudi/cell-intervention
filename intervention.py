@@ -10,11 +10,11 @@ from sklearn.metrics import accuracy_score, f1_score
 from tqdm import tqdm 
 
 from dataset import CellsDataset
-from train_seq_vit import test
+from train_seq_vit import test, predict_proba
 from seq_vit_utils import pad_img
 
 
-def test_cell(model, cell_feats, cell_labels, train_args, model_args, test_transforms):            
+def test_cell(model, cell_feats, cell_labels, train_args, model_args, test_transforms, get_proba=False):            
     """ 
     labels, preds = test_cell(model, cell_feats, cell_labels, train_args, model_args, test_transforms, max_len)
     
@@ -46,7 +46,8 @@ def test_cell(model, cell_feats, cell_labels, train_args, model_args, test_trans
     cell_dataset = CellsDataset(data, cell_labels, transform=test_transforms)
     cell_loader = DataLoader(dataset=cell_dataset, batch_size=train_args['batch_size'], shuffle=False)
 
-    labels, preds = test(model, cell_loader, model_args, load_from_dir=False)
+    labels, preds = test(model, cell_loader, model_args, load_from_dir=False) if not get_proba else \
+        predict_proba(model, cell_loader, model_args, load_from_dir=False)
 
     return labels, preds
 
@@ -105,7 +106,7 @@ def plot_online_pred(labels, preds, t, idx):
     fig = make_subplots(specs=[[{"secondary_y": True}]])
 
     fig.add_trace(
-        go.Scatter(x=t, y=(labels == preds)*1, name="True Positive"),
+        go.Scatter(x=t, y=(labels == preds)*1, name="Correct"),
         secondary_y=True,
     )
 
@@ -122,7 +123,7 @@ def plot_online_pred(labels, preds, t, idx):
 
     fig.update_xaxes(title_text="# Frame")
     fig.update_traces(mode="markers+lines", hovertemplate=None)
-    fig.update_yaxes(title_text="<b>True Positive</b>", secondary_y=True)
+    fig.update_yaxes(title_text="<b>Correct</b>", secondary_y=True)
     fig.update_yaxes(title_text="<b>Prediction</b>", secondary_y=False)
 
     fig.show()
@@ -148,6 +149,19 @@ def intervene_frame(model, test_list, labels_test, train_args, model_args, test_
     plot_intervention_scores(f1_signal, acc_signal, test_list)
     
     return acc_signal, f1_signal, frame_idx
+
+
+def intervene_proba(model, test_list, labels_test, train_args, model_args, test_transforms):
+    """Returns the probabilities of each frame."""
+    
+    print('computing best intervention time...')
+    labels, probs = [], []
+
+    for cell_idx in tqdm(range(len(test_list))):
+        cell_labels, cell_probs = test_cell(model, test_list[cell_idx], labels_test[cell_idx], train_args, model_args, test_transforms, get_proba=True)
+        labels.append(cell_labels), probs.append(cell_probs)
+
+    return np.array(labels), np.array(probs)
 
 
 def plot_intervention_scores(f1_signal, acc_signal, test_list):

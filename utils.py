@@ -3,8 +3,12 @@ import random
 import torch
 import torch.nn as nn
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from PIL import Image
+from plotly.subplots import make_subplots
+import plotly.graph_objects as go
+from sklearn.metrics import roc_curve, roc_auc_score, precision_recall_curve, average_precision_score
 
 
 def seed_everything(seed):
@@ -115,3 +119,95 @@ def get_cls_tokens(num_feats):
     pad_token = nn.Parameter(torch.randn(1, num_feats)).detach().numpy().T
 
     return SOS_token, EOS_token, pad_token
+
+
+def plot_roc_auc_curve(y, y_scores, y_scores_baseline, frame):
+
+    # One hot encode the labels in order to plot them
+    y_onehot = pd.get_dummies(y, columns=['0', '1', '2'])
+
+    fig = go.Figure()
+    fig.add_shape(
+        type='line', line=dict(dash='dash'),
+        x0=0, x1=1, y0=0, y1=1
+    )
+
+    for i in range(y_scores.shape[1]):
+        y_true = y_onehot.iloc[:, i]
+        y_score = y_scores[:, i]
+        y_score_bl = y_scores_baseline[:, i]
+
+        fpr, tpr, _ = roc_curve(y_true, y_score)
+        auc_score = roc_auc_score(y_true, y_score)
+
+        name = f"{y_onehot.columns[i]} (AUC={auc_score:.2f})"
+        fig.add_trace(go.Scatter(x=fpr, y=tpr, name=name, mode='lines'))
+
+        fpr_bl, tpr_bl, _ = roc_curve(y_true, y_score_bl)
+        auc_score_bl = roc_auc_score(y_true, y_score_bl)
+
+        name_bl = f"{y_onehot.columns[i]} - Baseline (AUC={auc_score_bl:.2f})"
+        fig.add_trace(go.Scatter(x=fpr_bl, y=tpr_bl, name=name_bl, mode='lines'))
+
+
+    fig.update_layout(
+        xaxis_title='False Positive Rate',
+        yaxis_title='True Positive Rate',
+        yaxis=dict(scaleanchor="x", scaleratio=1),
+        xaxis=dict(constrain='domain'),
+        width=700, height=500,
+        title=f'ROC AUC Cureve - Frame {frame}'
+    )
+    
+    fig.show()
+
+
+def plot_prc_auc_curve(y, y_scores,  y_scores_baseline, frame):
+    y_onehot = pd.get_dummies(y, columns=['0', '1', '2'])
+
+    fig = go.Figure()
+    fig.add_shape(
+        type='line', line=dict(dash='dash'),
+        x0=0, x1=1, y0=1, y1=0
+    )
+
+    for i in range(y_scores.shape[1]):
+        y_true = y_onehot.iloc[:, i]
+        y_score = y_scores[:, i]
+        y_score_bl = y_scores_baseline[:, i]
+
+        precision, recall, _ = precision_recall_curve(y_true, y_score)
+        auc_score = average_precision_score(y_true, y_score)
+
+        name = f"{y_onehot.columns[i]} (AP={auc_score:.2f})"
+        fig.add_trace(go.Scatter(x=recall, y=precision, name=name, mode='lines'))
+
+        precision_bl, recall_bl, _ = precision_recall_curve(y_true, y_score_bl)
+        auc_score_bl = average_precision_score(y_true, y_score_bl)
+
+        name_bl = f"{y_onehot.columns[i]} - Baseline (AP={auc_score_bl:.2f})"
+        fig.add_trace(go.Scatter(x=recall_bl, y=precision_bl, name=name_bl, mode='lines'))
+
+    fig.update_layout(
+        xaxis_title='Recall',
+        yaxis_title='Precision',
+        yaxis=dict(scaleanchor="x", scaleratio=1),
+        xaxis=dict(constrain='domain'),
+        width=700, height=500,
+        title=f'PRC AUC Cureve - Frame {frame}'
+    )
+
+    fig.show()
+    
+
+def plot_auc_curves_per_frame(labels, probs, frame=0):
+    """ Displays AUC curves of the specified frame. """
+    y = labels[:, frame]
+    y_scores = probs[:, frame]
+    y_major = np.argmax([list(y).count(x) for x in np.unique(labels)])
+    
+    y_scores_baseline = np.zeros(y_scores.shape)
+    y_scores_baseline[:, y_major] = 1
+
+    plot_prc_auc_curve(y, y_scores, y_scores_baseline, frame) 
+    plot_roc_auc_curve(y, y_scores, y_scores_baseline, frame)

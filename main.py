@@ -9,9 +9,9 @@ import numpy as np
 from data_handler import data_wrapper, train_test_split, load_extracted_features, process_feats
 from dataset import  get_transforms, get_datasets, get_dataloaders
 from train_seq_vit import evaluate_transformer, cross_valid_eval, cv_performance
-from utils import seed_everything, get_cls_tokens
+from utils import seed_everything, get_cls_tokens, plot_auc_curves_per_frame
 from seq_vit_utils import get_model_args, get_train_args, init_seq_vit
-from intervention import get_cell_online_eval, plot_online_pred, intervene_frame
+from intervention import get_cell_online_eval, plot_online_pred, intervene_frame, intervene_proba
 
 
 # %%
@@ -38,7 +38,7 @@ if __name__ == "__main__":
     
     image_size, max_len = tot_feats[0].shape[1:], tot_feats[0].shape[1]
 
-    train_args, model_args = get_train_args(), get_model_args(image_size, max_len, pad_token)
+    train_args, model_args = get_train_args(epochs=1), get_model_args(image_size, max_len, pad_token)
 
     # %% 
     """Split data to train and test. """
@@ -73,4 +73,14 @@ if __name__ == "__main__":
 
     acc_signal, f1_signal, frame_idx = intervene_frame(model, test_list, labels_test, train_args, model_args, test_transforms)
 
-# %%
+    # %%
+    """ Plot PRC AUC and ROC AUC curves on inference. """
+
+    train_list, test_list, labels_train, labels_test, test_idx = train_test_split(tot_feats, tot_labels, test_exps=test_idx, n_frames=1, on_raw_data=False)
+
+    labels, probs = intervene_proba(model, test_list, labels_test, train_args, model_args, test_transforms)
+
+    plot_auc_curves_per_frame(labels, probs, frame=2)
+    
+    # frames_to_explore = [2, 20, 50, 100, 150, 200, -1]
+    # [plot_auc_curves_per_frame(labels, probs, frame=frame) for frame in frames_to_explore]
