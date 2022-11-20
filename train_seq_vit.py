@@ -44,7 +44,7 @@ def evaluate_transformer(model, train_loader, val_loader, train_args, model_args
 
             data, label, orig_img, mask = data.to(model_args['device']), label.to(model_args['device']), orig_img.to(model_args['device']), mask.to(model_args['device'])
             output, mpp_loss = model(data, orig_img, mask)
-            loss = alpha*mpp_loss + criterion(output, label)
+            loss = (alpha*mpp_loss + criterion(output, label)).mean()
 
             if epoch != 0:
                 optimizer.zero_grad()
@@ -75,7 +75,7 @@ def evaluate_transformer(model, train_loader, val_loader, train_args, model_args
 
                 val_output, mpp_loss = model(data, orig_img, mask)
                 # val_loss = criterion(val_output, label)
-                val_loss = alpha*mpp_loss + criterion(val_output, label)
+                val_loss = (alpha*mpp_loss + criterion(val_output, label)).mean()
 
                 acc = (val_output.argmax(dim=1) == label).float().mean()
                 epoch_val_accuracy += acc / len(val_loader)
@@ -186,7 +186,7 @@ def cross_valid_eval(feats, labels, train_args, model_args, train_transforms=Non
         train_dataset, test_dataset = get_datasets(train_list, test_list, labels_train, labels_test, train_transforms, test_transforms)
         train_loader, test_loader = get_dataloaders(train_dataset, test_dataset, train_args, test_idx=None, verbose=1)
 
-        model = init_seq_vit(model_args)
+        model = init_seq_vit(model_args, use_data_parallel=True)
         model, report = evaluate_transformer(model, train_loader, test_loader, train_args, model_args)
 
         cv_results['best_models'].append(model)

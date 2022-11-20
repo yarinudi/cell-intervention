@@ -135,7 +135,7 @@ def plot_roc_auc_curve(y, y_scores, y_scores_baseline, frame):
     for i in range(y_scores.shape[1]):
         y_true = y_onehot.iloc[:, i]
         y_score = y_scores[:, i]
-        y_score_bl = y_scores_baseline[:, i]
+        # y_score_bl = y_scores_baseline[:, i]
 
         fpr, tpr, _ = roc_curve(y_true, y_score)
         auc_score = roc_auc_score(y_true, y_score)
@@ -143,11 +143,11 @@ def plot_roc_auc_curve(y, y_scores, y_scores_baseline, frame):
         name = f"{y_onehot.columns[i]} (AUC={auc_score:.2f})"
         fig.add_trace(go.Scatter(x=fpr, y=tpr, name=name, mode='lines'))
 
-        fpr_bl, tpr_bl, _ = roc_curve(y_true, y_score_bl)
-        auc_score_bl = roc_auc_score(y_true, y_score_bl)
+        # fpr_bl, tpr_bl, _ = roc_curve(y_true, y_score_bl)
+        # auc_score_bl = roc_auc_score(y_true, y_score_bl)
 
-        name_bl = f"{y_onehot.columns[i]} - Baseline (AUC={auc_score_bl:.2f})"
-        fig.add_trace(go.Scatter(x=fpr_bl, y=tpr_bl, name=name_bl, mode='lines'))
+        # name_bl = f"{y_onehot.columns[i]} - Baseline (AUC={auc_score_bl:.2f})"
+        # fig.add_trace(go.Scatter(x=fpr_bl, y=tpr_bl, name=name_bl, mode='lines'))
 
 
     fig.update_layout(
@@ -166,10 +166,11 @@ def plot_prc_auc_curve(y, y_scores,  y_scores_baseline, frame):
     y_onehot = pd.get_dummies(y, columns=['0', '1', '2'])
 
     fig = go.Figure()
-    fig.add_shape(
-        type='line', line=dict(dash='dash'),
-        x0=0, x1=1, y0=1, y1=0
-    )
+    # fig.add_shape(
+    #     type='line', line=dict(dash='dash'),
+    #     x0=0, x1=1, y0=1, y1=0
+    # )
+    colors = ['red', 'blue', 'green']
 
     for i in range(y_scores.shape[1]):
         y_true = y_onehot.iloc[:, i]
@@ -180,13 +181,13 @@ def plot_prc_auc_curve(y, y_scores,  y_scores_baseline, frame):
         auc_score = average_precision_score(y_true, y_score)
 
         name = f"{y_onehot.columns[i]} (AP={auc_score:.2f})"
-        fig.add_trace(go.Scatter(x=recall, y=precision, name=name, mode='lines'))
+        fig.add_trace(go.Scatter(x=recall, y=precision, name=name, mode='lines', line_color=colors[i]))
 
         precision_bl, recall_bl, _ = precision_recall_curve(y_true, y_score_bl)
         auc_score_bl = average_precision_score(y_true, y_score_bl)
 
         name_bl = f"{y_onehot.columns[i]} - Baseline (AP={auc_score_bl:.2f})"
-        fig.add_trace(go.Scatter(x=recall_bl, y=precision_bl, name=name_bl, mode='lines'))
+        fig.add_trace(go.Scatter(x=recall_bl, y=precision_bl, name=name_bl, mode='lines', line=dict(dash='dash', color=colors[i])))
 
     fig.update_layout(
         xaxis_title='Recall',
@@ -200,11 +201,11 @@ def plot_prc_auc_curve(y, y_scores,  y_scores_baseline, frame):
     fig.show()
     
 
-def plot_auc_curves_per_frame(labels, probs, frame=0):
+def plot_auc_curves_per_frame(labels, probs, frame=0, y_major=None):
     """ Displays AUC curves of the specified frame. """
     y = labels[:, frame]
     y_scores = probs[:, frame]
-    y_major = np.argmax([list(y).count(x) for x in np.unique(labels)])
+    y_major = np.argmax([list(y).count(x) for x in np.unique(labels)]) if y_major is None else y_major
     
     y_scores_baseline = np.zeros(y_scores.shape)
     y_scores_baseline[:, y_major] = 1

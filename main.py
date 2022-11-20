@@ -38,7 +38,11 @@ if __name__ == "__main__":
     
     image_size, max_len = tot_feats[0].shape[1:], tot_feats[0].shape[1]
 
-    train_args, model_args = get_train_args(epochs=1), get_model_args(image_size, max_len, pad_token)
+    train_args = get_train_args(epochs=100)
+
+    # model_args = get_model_args(image_size, max_len, pad_token, device,
+    #             dim=32, depth=9, heads=3, dim_head=16, mlp_dim=32)
+    model_args = get_model_args(image_size, max_len, pad_token, device)
 
     # %% 
     """Split data to train and test. """
@@ -48,7 +52,7 @@ if __name__ == "__main__":
     
     # %%
     """ Evaluate a single model. """
-    model = init_seq_vit(model_args)
+    model = init_seq_vit(model_args, use_data_parallel=False)
     model, report = evaluate_transformer(model, train_loader, test_loader, train_args, model_args)
 
     # %%
@@ -76,11 +80,13 @@ if __name__ == "__main__":
     # %%
     """ Plot PRC AUC and ROC AUC curves on inference. """
 
-    train_list, test_list, labels_train, labels_test, test_idx = train_test_split(tot_feats, tot_labels, test_exps=test_idx, n_frames=1, on_raw_data=False)
+    # train_list, test_list, labels_train, labels_test, test_idx = train_test_split(tot_feats, tot_labels, test_exps=test_idx, n_frames=1, on_raw_data=False)
 
     labels, probs = intervene_proba(model, test_list, labels_test, train_args, model_args, test_transforms)
-
-    plot_auc_curves_per_frame(labels, probs, frame=2)
     
-    # frames_to_explore = [2, 20, 50, 100, 150, 200, -1]
-    # [plot_auc_curves_per_frame(labels, probs, frame=frame) for frame in frames_to_explore]
+    # plot_auc_curves_per_frame(labels, probs, frame=2, y_major=2)
+    
+    frames_to_explore = [2, 20, 50, 100, 166, 200, -1]
+    [plot_auc_curves_per_frame(labels, probs, frame=frame, y_major=2) for frame in frames_to_explore]
+
+# %%
